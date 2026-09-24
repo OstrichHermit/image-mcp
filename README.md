@@ -9,21 +9,25 @@
 - **图像理解**：描述图像内容、回答图像相关问题
 - **多图识别**：支持多张参考图片的上下文分析
 - **OCR**：从图像中提取文字（支持代码截图、终端输出）
+- **文档版面解析**：基于 GLM-OCR 的版面感知 OCR（可选）
 - **数据可视化分析**：分析图表、仪表盘
 - **图像对比**：UI 差异检查、前后对比
-- **图像生成**：使用 Gemini 2.5 Flash 生成图像（可扩展）
+- **图像生成**：OpenAI GPT Image 2.5（默认引擎），支持文生图与参考图编辑
 
 ## 支持的模型
 
 ### 图像理解
 - **通义千问 VL（Qwen VL）**：`qwen3.5-plus` - 支持图像理解和深度思考
 
-### 图像生成
-- **Gemini Flash**：`gemini-3.1-flash-image-preview`（默认，快速生成）
-- **Gemini Pro**：`gemini-3-pro-image-preview`（高质量生成，设置 `pro=true`）
-- **可扩展**：智谱 AI、DALL-E、Stable Diffusion 等
+### 图像生成（默认引擎：OpenAI）
+- **GPT Image 2.5 快速档**：`gpt-image-2.5-flare`（默认，速度优先）
+- **GPT Image 2.5 精修档**：`gpt-image-2.5-sunburst`（编辑精度优先，设置 `pro=true`）
+- **画质档位**：`low` / `medium` / `high` / `xhigh` / `max`
+- **中转站支持**：通过 `OPENAI_BASE_URL` 指向任意 OpenAI 兼容端点（含 OpenRouter 自动适配）
+- **备选引擎**：Gemini（`engine="gemini"`，Flash / Pro 两档）
+- **可扩展**：智谱 AI、Stable Diffusion 等
 
-**模型配置**：可通过环境变量 `GEMINI_FLASH_MODEL` 和 `GEMINI_PRO_MODEL` 自定义模型名称
+**模型配置**：可通过环境变量 `OPENAI_IMAGE_MODEL_FAST` / `OPENAI_IMAGE_MODEL_PRO` / `GEMINI_FLASH_MODEL` / `GEMINI_PRO_MODEL` 自定义模型名称
 
 ## 安装
 
@@ -33,34 +37,49 @@ cd image-mcp
 pip install -e .
 
 # 必需依赖
-pip install mcp httpx Pillow python-dotenv google-generativeai Pillow
+pip install httpx Pillow python-dotenv
+
+# 可选：使用 Gemini 备选引擎时需要
+pip install google-generativeai
 ```
 
-**注意**：`google-generativeai` 版本需要 ≥ 0.8.0 才支持 Gemini 2.5 Flash Image API
+**注意**：协议层为手写 MCP（JSON-RPC 2.0 over stdio），无需任何第三方 MCP 框架
 
 ## 配置
 
 ### 1. 环境变量
 
-编辑 `.env` 文件：
+编辑 `.env` 文件（参考 `.env.example`）：
 
 ```bash
 # 通义千问 VL（图像理解）- 必需
 DASHSCOPE_API_KEY=your_dashscope_api_key_here
 
-# Gemini（图像生成）- 可选
-GEMINI_API_KEY=your_gemini_api_key_here
+# OpenAI GPT Image 2.5（图像生成，默认引擎）
+OPENAI_API_KEY=your_openai_api_key_here
 
-# Gemini 模型配置（可选，不配置则使用默认值）
-# Flash 模型（默认，快速生成）
+# 中转 / 代理端点（可选，走 OpenAI 官方则留空）
+# 例如第三方中转站: https://api.example-relay.com/v1（兼容 OpenRouter）
+OPENAI_BASE_URL=
+
+# GPT Image 2.5 模型配置（可选）
+OPENAI_IMAGE_MODEL_FAST=gpt-image-2.5-flare
+OPENAI_IMAGE_MODEL_PRO=gpt-image-2.5-sunburst
+
+# Gemini（可选备选引擎，engine="gemini" 时使用）
+GEMINI_API_KEY=your_gemini_api_key_here
 GEMINI_FLASH_MODEL=gemini-3.1-flash-image-preview
-# Pro 模型（高质量生成）
 GEMINI_PRO_MODEL=gemini-3-pro-image-preview
+
+# 智谱 AI（文档版面解析 OCR，可选）
+ZHIPU_API_KEY=your_zhipu_api_key_here
 ```
 
 **获取 API Key**：
 - 通义千问 VL：https://help.aliyun.com/zh/model-studio/developer-reference/get-api-key
+- OpenAI：https://platform.openai.com/api-keys
 - Gemini：https://aistudio.google.com/app/apikey
+- 智谱 AI：https://open.bigmodel.cn/
 
 ### 2. MCP 配置
 
@@ -140,52 +159,53 @@ analyze_image(
 - `prompt`：对比指令
 
 ### generate_image ✨
-使用 Gemini 生成图像（需要配置 GEMINI_API_KEY）
+生成图像。默认引擎为 OpenAI GPT Image 2.5（需配置 `OPENAI_API_KEY`），`engine="gemini"` 可切换 Gemini（需 `GEMINI_API_KEY`）
 
-**模型选择**：
-- Flash 模型（默认）：`gemini-3.1-flash-image-preview` - 快速生成
-- Pro 模型：`gemini-3-pro-image-preview` - 高质量生成（设置 `pro=true`）
+**引擎与模型选择**（OpenAI，默认）：
+- 快速档（默认）：`gpt-image-2.5-flare` - 速度优先
+- 精修档：`gpt-image-2.5-sunburst` - 编辑精度优先（设置 `pro=true`）
 
-可通过环境变量自定义模型名称：
-- `GEMINI_FLASH_MODEL`：Flash 模型名称
-- `GEMINI_PRO_MODEL`：Pro 模型名称
+**画质档位**（`quality`）：`low` / `medium`（默认）/ `high` / `xhigh` / `max`
 
 支持两种模式：
 - **Text-to-Image**：纯文本生成图像
-- **Image-to-Image (img2img)**：使用参考图片生成新图像
+- **Image-to-Image (img2img)**：使用参考图片生成新图像（编辑走 `/images/edits`，像素级保留）
 
 参数：
 - `prompt`：文本描述（必需）
+- `engine`：生成引擎 - `openai`（默认，配置了 `OPENAI_API_KEY` 时）/ `gemini`
+- `pro`：精修档开关（默认 false）
+- `quality`：画质档位（OpenAI 引擎）
 - `output_path`：保存路径（可选，默认自动生成在 `files/generated_images/`）
-- `reference_image`：参考图片路径（可选，仅支持本地路径）
+- `reference_images`：参考图片路径列表（可选）
 - `aspect_ratio`：图像比例 - `1:1`, `16:9`, `9:16`, `21:9` 等
 - `resolution`：图像分辨率 - `1K`, `2K`（默认）, `4K`
 
 示例：
 ```python
-# Text-to-Image：纯文本生成（默认 1:1, 2K）
+# Text-to-Image：纯文本生成（默认 1:1, 2K, medium 画质）
 generate_image(
     prompt="一只可爱的小猫在花园里"
 )
 
-# Text-to-Image：自定义比例和分辨率
+# 精修档 + 高画质
 generate_image(
     prompt="风景画，山脉和湖泊",
-    aspect_ratio="16:9",
-    resolution="4K"
+    pro=True,
+    quality="high",
+    aspect_ratio="16:9"
 )
 
-# Image-to-Image：使用参考图片
+# Image-to-Image：参考图编辑
 generate_image(
     prompt="把这只猫变成卡通风格",
-    reference_image="path/to/cat.jpg"
+    reference_images=["path/to/cat.jpg"]
 )
 
-# Image-to-Image：编辑现有图片
+# 切换 Gemini 引擎
 generate_image(
-    prompt="在图片中添加一副墨镜",
-    reference_image="files/person.jpg",
-    aspect_ratio="1:1"
+    prompt="赛博朋克城市夜景",
+    engine="gemini"
 )
 ```
 
@@ -217,7 +237,7 @@ src/
 ├── models/
 │   ├── base.py        # 基础模型接口
 │   ├── qwen.py        # 通义千问 VL（图像理解）
-│   └── gemini.py      # Gemini 2.5 Flash（图像生成）
+│   └── gemini.py      # Gemini（图像生成备选引擎）
 └── tools/
     ├── analyze.py     # 图像分析工具
     └── generate.py    # 图像生成工具
@@ -339,11 +359,12 @@ class MyImageModel(BaseImageModel):
 
 ### MCP 无法连接
 - 检查 `.env` 文件中的 API Key 是否正确
-- 确认所有依赖已安装：`pip install mcp httpx Pillow python-dotenv google-generativeai`
+- 确认所有依赖已安装：`pip install httpx Pillow python-dotenv`
 
 ### 图像生成失败
-- 确认已配置 `GEMINI_API_KEY`
-- 检查网络连接
+- OpenAI 引擎：确认已配置 `OPENAI_API_KEY`（走中转站时还需 `OPENAI_BASE_URL`）
+- Gemini 引擎：确认已配置 `GEMINI_API_KEY`
+- 检查网络连接（适配器内置 3 次重试）
 - 查看 API 配额限制
 
 ## License

@@ -11,19 +11,22 @@ A universal image MCP server supporting multiple AI models for image understandi
 - **OCR**: Extract text from images (code screenshots, terminal output)
 - **Data Visualization Analysis**: Analyze charts and dashboards
 - **Image Comparison**: UI diff checking, before/after comparison
-- **Image Generation**: Generate images with Gemini image models (extensible)
+- **Image Generation**: OpenAI GPT Image 2.5 (default engine), text-to-image & reference-guided editing
 
 ## Supported Models
 
 ### Image Understanding
 - **Qwen VL (Tongyi Qianwen)**: `qwen3.5-plus` - image understanding with deep thinking
 
-### Image Generation
-- **Gemini Flash**: `gemini-3.1-flash-image-preview` (default, fast)
-- **Gemini Pro**: `gemini-3-pro-image-preview` (high quality, set `pro=true`)
-- **Extensible**: Zhipu AI, DALL-E, Stable Diffusion, etc.
+### Image Generation (default engine: OpenAI)
+- **GPT Image 2.5 Fast**: `gpt-image-2.5-flare` (default, speed-first)
+- **GPT Image 2.5 Pro**: `gpt-image-2.5-sunburst` (editing-precision-first, set `pro=true`)
+- **Quality tiers**: `low` / `medium` / `high` / `xhigh` / `max`
+- **Relay-friendly**: point `OPENAI_BASE_URL` at any OpenAI-compatible endpoint (OpenRouter auto-detected)
+- **Fallback engine**: Gemini (`engine="gemini"`, Flash / Pro)
+- **Extensible**: Zhipu AI, Stable Diffusion, etc.
 
-**Model Configuration**: Customize model names via the `GEMINI_FLASH_MODEL` and `GEMINI_PRO_MODEL` environment variables
+**Model Configuration**: Customize model names via the `OPENAI_IMAGE_MODEL_FAST` / `OPENAI_IMAGE_MODEL_PRO` / `GEMINI_FLASH_MODEL` / `GEMINI_PRO_MODEL` environment variables
 
 ## Installation
 
@@ -32,34 +35,49 @@ cd image-mcp
 pip install -e .
 
 # Required dependencies
-pip install mcp httpx Pillow python-dotenv google-generativeai
+pip install httpx Pillow python-dotenv
+
+# Optional: only needed for the Gemini fallback engine
+pip install google-generativeai
 ```
 
-**Note**: `google-generativeai` requires version >= 0.8.0 for the Gemini image generation API
+**Note**: The protocol layer is a hand-written MCP implementation (JSON-RPC 2.0 over stdio) — no third-party MCP framework required
 
 ## Configuration
 
 ### 1. Environment Variables
 
-Edit the `.env` file:
+Edit the `.env` file (see `.env.example`):
 
 ```bash
 # Qwen VL (image understanding) - required
 DASHSCOPE_API_KEY=your_dashscope_api_key_here
 
-# Gemini (image generation) - optional
-GEMINI_API_KEY=your_gemini_api_key_here
+# OpenAI GPT Image 2.5 (image generation, default engine)
+OPENAI_API_KEY=your_openai_api_key_here
 
-# Gemini model configuration (optional, defaults are used if not set)
-# Flash model (default, fast)
+# Relay / proxy endpoint (optional, leave empty for official OpenAI)
+# e.g. a third-party relay: https://api.example-relay.com/v1 (OpenRouter compatible)
+OPENAI_BASE_URL=
+
+# GPT Image 2.5 model configuration (optional)
+OPENAI_IMAGE_MODEL_FAST=gpt-image-2.5-flare
+OPENAI_IMAGE_MODEL_PRO=gpt-image-2.5-sunburst
+
+# Gemini (optional fallback engine, engine="gemini")
+GEMINI_API_KEY=your_gemini_api_key_here
 GEMINI_FLASH_MODEL=gemini-3.1-flash-image-preview
-# Pro model (high quality)
 GEMINI_PRO_MODEL=gemini-3-pro-image-preview
+
+# Zhipu AI (layout-aware document OCR, optional)
+ZHIPU_API_KEY=your_zhipu_api_key_here
 ```
 
 **Get API Keys**:
 - Qwen VL: https://help.aliyun.com/zh/model-studio/developer-reference/get-api-key
+- OpenAI: https://platform.openai.com/api-keys
 - Gemini: https://aistudio.google.com/app/apikey
+- Zhipu AI: https://open.bigmodel.cn/
 
 ### 2. MCP Configuration
 
@@ -132,43 +150,51 @@ Parameters:
 - `prompt`: comparison instruction
 
 ### generate_image
-Generate images with Gemini (requires `GEMINI_API_KEY`)
+Generate images. Default engine is OpenAI GPT Image 2.5 (requires `OPENAI_API_KEY`); set `engine="gemini"` to use Gemini (requires `GEMINI_API_KEY`)
 
-**Model Selection**:
-- Flash (default): `gemini-3.1-flash-image-preview` - fast
-- Pro: `gemini-3-pro-image-preview` - high quality (set `pro=true`)
+**Engine & Model Selection** (OpenAI, default):
+- Fast (default): `gpt-image-2.5-flare` - speed-first
+- Pro: `gpt-image-2.5-sunburst` - editing-precision-first (set `pro=true`)
 
-Customizable via environment variables:
-- `GEMINI_FLASH_MODEL`: Flash model name
-- `GEMINI_PRO_MODEL`: Pro model name
+**Quality tiers** (`quality`): `low` / `medium` (default) / `high` / `xhigh` / `max`
 
 Two modes:
 - **Text-to-Image**: generate from text only
-- **Image-to-Image (img2img)**: generate using reference image(s)
+- **Image-to-Image (img2img)**: generate using reference image(s) (edits go through `/images/edits`, pixel-level preservation)
 
 Parameters:
 - `prompt`: text description (required)
+- `engine`: generation engine - `openai` (default when `OPENAI_API_KEY` is set) / `gemini`
+- `pro`: use the precision tier (default false)
+- `quality`: quality tier (OpenAI engine)
 - `output_path`: save path (optional, defaults to auto-generated name in `files/generated_images/`)
-- `reference_image`: reference image path (optional)
+- `reference_images`: reference image path list (optional)
 - `aspect_ratio`: `1:1`, `16:9`, `9:16`, `21:9`, etc.
 - `resolution`: `1K`, `2K` (default), `4K`
 
 Example:
 ```python
-# Text-to-Image (default 1:1, 2K)
+# Text-to-Image (default 1:1, 2K, medium quality)
 generate_image(prompt="A cute cat in a garden")
 
-# Custom ratio and resolution
+# Precision tier + high quality
 generate_image(
     prompt="Landscape painting with mountains and a lake",
-    aspect_ratio="16:9",
-    resolution="4K"
+    pro=True,
+    quality="high",
+    aspect_ratio="16:9"
 )
 
 # Image-to-Image with a reference
 generate_image(
     prompt="Turn this cat into cartoon style",
-    reference_image="path/to/cat.jpg"
+    reference_images=["path/to/cat.jpg"]
+)
+
+# Switch to the Gemini engine
+generate_image(
+    prompt="Cyberpunk city at night",
+    engine="gemini"
 )
 ```
 
@@ -251,11 +277,12 @@ class MyImageModel(BaseImageModel):
 
 ### MCP fails to connect
 - Check that API keys in `.env` are correct
-- Confirm all dependencies are installed: `pip install mcp httpx Pillow python-dotenv google-generativeai`
+- Confirm all dependencies are installed: `pip install httpx Pillow python-dotenv`
 
 ### Image generation fails
-- Confirm `GEMINI_API_KEY` is configured
-- Check network connectivity
+- OpenAI engine: confirm `OPENAI_API_KEY` is configured (plus `OPENAI_BASE_URL` when using a relay)
+- Gemini engine: confirm `GEMINI_API_KEY` is configured
+- Check network connectivity (the adapter retries 3 times)
 - Check API quota limits
 
 ## License
