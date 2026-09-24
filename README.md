@@ -59,7 +59,7 @@ DASHSCOPE_API_KEY=your_dashscope_api_key_here
 OPENAI_API_KEY=your_openai_api_key_here
 
 # 中转 / 代理端点（可选，走 OpenAI 官方则留空）
-# 例如第三方中转站: https://api.example-relay.com/v1（兼容 OpenRouter）
+# 示例（API易 中转站）: https://api.apiyi.com/v1（兼容 OpenRouter）
 OPENAI_BASE_URL=
 
 # GPT Image 2.5 模型配置（可选）
@@ -78,8 +78,11 @@ ZHIPU_API_KEY=your_zhipu_api_key_here
 **获取 API Key**：
 - 通义千问 VL：https://help.aliyun.com/zh/model-studio/developer-reference/get-api-key
 - OpenAI：https://platform.openai.com/api-keys
+- API易（OpenAI 兼容中转站，国内可直接充值使用）：https://api.apiyi.com/register/?aff_code=ozLi
 - Gemini：https://aistudio.google.com/app/apikey
 - 智谱 AI：https://open.bigmodel.cn/
+
+> **使用中转站**：在 `OPENAI_API_KEY` 填入中转站密钥、`OPENAI_BASE_URL` 填入中转站端点（如 `https://api.apiyi.com/v1`）即可，其余配置不变。
 
 ### 2. MCP 配置
 

@@ -57,7 +57,7 @@ DASHSCOPE_API_KEY=your_dashscope_api_key_here
 OPENAI_API_KEY=your_openai_api_key_here
 
 # Relay / proxy endpoint (optional, leave empty for official OpenAI)
-# e.g. a third-party relay: https://api.example-relay.com/v1 (OpenRouter compatible)
+# e.g. APIYi relay: https://api.apiyi.com/v1 (OpenRouter compatible)
 OPENAI_BASE_URL=
 
 # GPT Image 2.5 model configuration (optional)
@@ -76,8 +76,11 @@ ZHIPU_API_KEY=your_zhipu_api_key_here
 **Get API Keys**:
 - Qwen VL: https://help.aliyun.com/zh/model-studio/developer-reference/get-api-key
 - OpenAI: https://platform.openai.com/api-keys
+- APIYi (OpenAI-compatible relay, works well in China): https://api.apiyi.com/register/?aff_code=ozLi
 - Gemini: https://aistudio.google.com/app/apikey
 - Zhipu AI: https://open.bigmodel.cn/
+
+> **Using a relay**: put the relay key in `OPENAI_API_KEY` and the relay endpoint in `OPENAI_BASE_URL` (e.g. `https://api.apiyi.com/v1`) — everything else stays the same.
 
 ### 2. MCP Configuration
 
