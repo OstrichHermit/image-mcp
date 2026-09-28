@@ -2,6 +2,8 @@
 
 通用图像 MCP 服务器，支持多个 AI 模型的图像理解和生成。
 
+A universal image MCP server supporting multiple AI models for image understanding and generation.
+
 [English](README_EN.md) | [简体中文](README.md)
 
 ## 功能
